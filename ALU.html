@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALU — Interactive Design & Simulation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070d1a;
+  --bg2:#0d1626;
+  --bg3:#111e33;
+  --panel:#0f1929;
+  --border:#1e3a5f;
+  --border2:#2a5280;
+  --accent:#00d4ff;
+  --accent2:#0095b3;
+  --green:#00ff88;
+  --amber:#ffb800;
+  --red:#ff4060;
+  --purple:#a855f7;
+  --pink:#f472b6;
+  --text:#e2e8f0;
+  --muted:#6b7fa0;
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Space Mono',monospace;
+}
+
+body{background:var(--bg);color:var(--text);font-family:var(--mono);overflow-x:hidden}
+
+/* ── SCANLINE OVERLAY ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.015) 2px,rgba(0,212,255,0.015) 4px);
+  pointer-events:none;z-index:9999
+}
+
+/* ── NAV ── */
+.nav{
+  background:rgba(7,13,26,0.95);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;align-items:center;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(10px);
+}
+.nav-logo{
+  font-family:var(--display);font-size:13px;font-weight:900;
+  color:var(--accent);letter-spacing:3px;padding:15px 0;
+  margin-right:32px;white-space:nowrap;
+  text-shadow:0 0 20px rgba(0,212,255,0.5);
+}
+.nav-tabs{display:flex;gap:0;flex:1}
+.nav-tab{
+  padding:15px 18px;font-size:11px;letter-spacing:1.5px;
+  color:var(--muted);cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;font-family:var(--mono);
+  transition:all 0.2s;text-transform:uppercase;
+}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-badge{
+  background:var(--accent);color:var(--bg);
+  font-size:9px;padding:1px 6px;border-radius:2px;
+  margin-left:6px;font-weight:700;letter-spacing:1px;
+}
+
+/* ── PAGES ── */
+.page{display:none;animation:fadeIn 0.3s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── HERO ── */
+.hero{
+  padding:60px 32px 40px;
+  background:linear-gradient(180deg,rgba(0,212,255,0.04) 0%,transparent 60%);
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.hero::after{
+  content:'';position:absolute;top:-80px;right:-80px;
+  width:400px;height:400px;
+  background:radial-gradient(circle,rgba(0,212,255,0.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.hero-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);
+  color:var(--accent);font-size:11px;letter-spacing:2px;
+  padding:5px 14px;border-radius:2px;margin-bottom:20px;
+}
+.hero-chip::before{content:'●';font-size:8px;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.hero h1{
+  font-family:var(--display);font-size:clamp(28px,4vw,52px);
+  font-weight:900;letter-spacing:4px;line-height:1.1;
+  color:#fff;margin-bottom:12px;
+  text-shadow:0 0 40px rgba(0,212,255,0.3);
+}
+.hero h1 span{color:var(--accent)}
+.hero-sub{font-size:13px;color:var(--muted);letter-spacing:1px;line-height:1.8;max-width:600px;margin-bottom:32px}
+.hero-stats{display:flex;gap:32px;flex-wrap:wrap}
+.stat{border-left:2px solid var(--border2);padding:4px 0 4px 16px}
+.stat-num{font-family:var(--display);font-size:22px;color:var(--accent);font-weight:700}
+.stat-label{font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:2px}
+
+/* ── SECTION ── */
+.section{padding:40px 32px;border-bottom:1px solid var(--border)}
+.section-title{
+  font-family:var(--display);font-size:11px;letter-spacing:4px;
+  color:var(--accent);margin-bottom:24px;
+  display:flex;align-items:center;gap:12px;
+}
+.section-title::before{content:'//';color:var(--border2)}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent)}
+
+/* ── TOPIC CARDS ── */
+.topics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.topic-card{
+  background:var(--panel);border:1px solid var(--border);
+  padding:20px;cursor:pointer;transition:all 0.2s;
+  position:relative;overflow:hidden;
+}
+.topic-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--card-color,var(--accent));
+  transform:scaleX(0);transition:transform 0.2s;transform-origin:left;
+}
+.topic-card:hover{border-color:var(--card-color,var(--border2));transform:translateY(-2px)}
+.topic-card:hover::before{transform:scaleX(1)}
+.card-icon{font-size:24px;margin-bottom:12px}
+.card-title{font-family:var(--display);font-size:12px;letter-spacing:2px;color:#fff;margin-bottom:8px}
+.card-desc{font-size:11px;color:var(--muted);line-height:1.7}
+.card-tag{
+  display:inline-block;margin-top:12px;
+  font-size:9px;letter-spacing:2px;padding:3px 8px;
+  border:1px solid;opacity:0.7;
+}
+
+/* ── ALU SIMULATOR ── */
+.sim-layout{display:grid;grid-template-columns:280px 1fr 260px;gap:0;min-height:600px}
+.sim-panel{background:var(--panel);border:1px solid var(--border)}
+.sim-panel-title{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:3px;color:var(--accent);
+}
+
+/* Input Panel */
+.input-group{padding:16px}
+.input-label{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px}
+.bit-row{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.bit-btn{
+  width:32px;height:32px;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--muted);
+  font-family:var(--display);font-size:13px;font-weight:700;
+  cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;
+}
+.bit-btn.on{background:rgba(0,212,255,0.15);border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px rgba(0,212,255,0.2)}
+.bit-btn:hover{border-color:var(--accent2);color:var(--text)}
+
+.hex-display{
+  background:var(--bg);border:1px solid var(--border);
+  padding:8px 12px;font-family:var(--display);
+  font-size:14px;color:var(--green);letter-spacing:2px;
+  margin-bottom:8px;text-align:right;
+}
+.dec-display{font-size:10px;color:var(--muted);text-align:right;padding-right:4px;margin-bottom:16px}
+
+.op-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px 16px}
+.op-btn{
+  padding:9px 8px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--muted);
+  font-family:var(--mono);font-size:11px;letter-spacing:1px;
+  cursor:pointer;transition:all 0.2s;text-align:center;
+}
+.op-btn:hover{border-color:var(--border2);color:var(--text)}
+.op-btn.active{
+  border-color:var(--amber);background:rgba(255,184,0,0.08);
+  color:var(--amber);box-shadow:0 0 8px rgba(255,184,0,0.15);
+}
+.op-btn .op-sym{font-family:var(--display);font-size:14px;display:block;margin-bottom:2px}
+.op-btn .op-name{font-size:9px;color:inherit;opacity:0.7}
+
+.execute-btn{
+  margin:0 16px 16px;width:calc(100% - 32px);
+  padding:12px;background:var(--accent);color:var(--bg);
+  border:none;font-family:var(--display);font-size:11px;
+  letter-spacing:3px;cursor:pointer;font-weight:700;
+  transition:all 0.2s;
+}
+.execute-btn:hover{background:#00eeff;box-shadow:0 0 20px rgba(0,212,255,0.4)}
+.execute-btn:active{transform:scale(0.98)}
+
+/* ALU Diagram Panel */
+.alu-diagram{padding:24px;display:flex;flex-direction:column;align-items:center;position:relative}
+.alu-canvas-wrap{width:100%;max-width:500px;position:relative}
+
+/* Result Panel */
+.result-section{padding:16px}
+.result-label{font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:6px}
+.result-big{
+  font-family:var(--display);font-size:32px;font-weight:900;
+  color:var(--green);letter-spacing:2px;
+  text-shadow:0 0 20px rgba(0,255,136,0.4);
+  margin-bottom:4px;
+  transition:all 0.3s;
+}
+.result-hex{font-size:12px;color:var(--accent);margin-bottom:4px}
+.result-bin{font-size:10px;color:var(--muted);word-break:break-all;line-height:1.6;margin-bottom:16px}
+
+.flags-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.flag{
+  padding:5px 10px;border:1px solid var(--border);
+  font-size:10px;letter-spacing:1px;
+  display:flex;align-items:center;gap:6px;
+}
+.flag-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.flag.set .flag-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.flag.set{border-color:var(--green);color:var(--green)}
+
+.history-list{max-height:240px;overflow-y:auto}
+.hist-item{
+  padding:8px 0;border-bottom:1px solid var(--border);
+  font-size:10px;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.hist-item:last-child{border-bottom:none}
+.hist-expr{color:var(--text)}
+.hist-res{color:var(--accent);font-family:var(--display)}
+
+/* ── TRUTH TABLE ── */
+.truth-controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.gate-sel-btn{
+  padding:8px 16px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--muted);
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:all 0.2s;
+}
+.gate-sel-btn:hover{border-color:var(--border2);color:var(--text)}
+.gate-sel-btn.active{border-color:var(--purple);background:rgba(168,85,247,0.1);color:var(--purple)}
+
+.truth-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.truth-table-wrap{overflow:auto}
+table.truth{border-collapse:collapse;width:100%;font-size:12px}
+table.truth th{
+  padding:8px 16px;background:var(--bg3);
+  border:1px solid var(--border);font-size:10px;
+  letter-spacing:2px;color:var(--accent);text-align:center;
+}
+table.truth td{
+  padding:8px 16px;border:1px solid var(--border);
+  text-align:center;color:var(--muted);
+  transition:background 0.3s;
+}
+table.truth tr:hover td{background:rgba(0,212,255,0.03)}
+table.truth td.one{color:var(--green);font-weight:700}
+table.truth td.zero{color:var(--red)}
+
+.gate-diagram{
+  display:flex;flex-direction:column;align-items:center;
+  gap:20px;padding:20px;
+  background:var(--bg3);border:1px solid var(--border);
+}
+.gate-expr{
+  font-family:var(--display);font-size:13px;letter-spacing:2px;
+  color:var(--purple);text-align:center;
+}
+.gate-desc{font-size:11px;color:var(--muted);text-align:center;line-height:1.7;max-width:300px}
+
+/* ── BINARY ARITHMETIC ── */
+.arith-demo{background:var(--panel);border:1px solid var(--border);padding:24px;max-width:500px}
+.arith-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+  font-family:var(--display);font-size:16px;letter-spacing:2px;
+}
+.arith-op-sym{color:var(--amber);width:20px;text-align:right}
+.arith-val{color:var(--text)}
+.arith-line{border-top:1px solid var(--border2);margin:8px 0;padding-top:12px}
+.arith-result{color:var(--green);font-size:18px}
+.carry-row{font-size:11px;color:var(--purple);letter-spacing:1px;margin-top:4px}
+
+.step-adder{margin-top:24px}
+.step-row{
+  display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;
+}
+.step-num{
+  font-family:var(--display);font-size:10px;color:var(--accent);
+  background:rgba(0,212,255,0.08);border:1px solid var(--border);
+  padding:2px 8px;min-width:28px;text-align:center;
+  margin-top:2px;
+}
+.step-text{font-size:12px;color:var(--muted);line-height:1.7}
+.step-text strong{color:var(--text)}
+
+/* ── CODE VIEW ── */
+.code-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto}
+.code-tab{
+  padding:10px 18px;font-size:11px;letter-spacing:1px;
+  color:var(--muted);cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;font-family:var(--mono);
+  transition:all 0.2s;white-space:nowrap;
+}
+.code-tab:hover{color:var(--text)}
+.code-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.code-block{
+  background:var(--bg3);padding:24px;overflow:auto;
+  max-height:600px;font-size:12px;line-height:1.8;
+  tab-size:2;
+}
+.code-block pre{white-space:pre;font-family:var(--mono)}
+.kw{color:var(--purple)}
+.fn{color:var(--accent)}
+.str{color:var(--amber)}
+.num{color:var(--green)}
+.cmt{color:var(--muted);font-style:italic}
+.type{color:var(--pink)}
+
+/* ── FULL ADDER ── */
+.adder-interactive{
+  display:grid;grid-template-columns:1fr 1fr;gap:24px;
+  align-items:start;
+}
+.adder-bits{display:flex;flex-direction:column;gap:12px}
+.adder-bit-row{display:flex;align-items:center;gap:12px}
+.adder-bit-label{font-size:11px;color:var(--muted);width:20px}
+.toggle-bit{
+  width:48px;height:28px;border-radius:2px;
+  border:1px solid var(--border2);background:var(--bg3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:14px;font-weight:700;
+  transition:all 0.2s;color:var(--muted);
+}
+.toggle-bit.on{background:rgba(0,255,136,0.12);border-color:var(--green);color:var(--green);box-shadow:0 0 10px rgba(0,255,136,0.2)}
+.adder-output-row{display:flex;gap:16px;margin-top:8px;padding-top:12px;border-top:1px solid var(--border)}
+.adder-out{text-align:center}
+.adder-out-label{font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:6px}
+.adder-out-val{
+  font-family:var(--display);font-size:24px;font-weight:700;
+  transition:all 0.3s;
+}
+.adder-out-val.on{color:var(--green);text-shadow:0 0 12px rgba(0,255,136,0.4)}
+.adder-out-val.off{color:var(--muted)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sim-layout{grid-template-columns:1fr}
+  .truth-layout{grid-template-columns:1fr}
+  .adder-interactive{grid-template-columns:1fr}
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ANIMATIONS */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+.processing{animation:pulse 0.6s ease 3}
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">ALU<span style="color:#fff"> SIM</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+    <button class="nav-tab" onclick="showPage('simulator')">Simulator <span class="nav-badge">LIVE</span></button>
+    <button class="nav-tab" onclick="showPage('gates')">Logic Gates</button>
+    <button class="nav-tab" onclick="showPage('adder')">Full Adder</button>
+    <button class="nav-tab" onclick="showPage('arithmetic')">Arithmetic</button>
+    <button class="nav-tab" onclick="showPage('code')">Source Code</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: OVERVIEW -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-overview" class="page active">
+
+  <div class="hero">
+    <div class="hero-chip">DIGITAL LOGIC UNIT</div>
+    <h1>Arithmetic<br><span>Logic Unit</span></h1>
+    <p class="hero-sub">
+      The computational heart of every processor. An ALU performs integer arithmetic and bitwise logic operations on binary operands — the fundamental building block of all digital computation.
+    </p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">8-BIT</div><div class="stat-label">Operand Width</div></div>
+      <div class="stat"><div class="stat-num">12</div><div class="stat-label">Operations</div></div>
+      <div class="stat"><div class="stat-num">4</div><div class="stat-label">Status Flags</div></div>
+      <div class="stat"><div class="stat-num">256</div><div class="stat-label">Unique Values</div></div>
+    </div>
+  </div>
+
+  <!-- TOPICS -->
+  <div class="section">
+    <div class="section-title">Core Topics</div>
+    <div class="topics-grid">
+      <div class="topic-card" style="--card-color:#00d4ff" onclick="showPage('simulator')">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">ALU Simulator</div>
+        <div class="card-desc">Interactive 8-bit ALU. Set operands bit by bit, choose operations, execute and observe results with real-time flag computation.</div>
+        <div class="card-tag" style="color:#00d4ff;border-color:#00d4ff">INTERACTIVE</div>
+      </div>
+      <div class="topic-card" style="--card-color:#a855f7" onclick="showPage('gates')">
+        <div class="card-icon">◈</div>
+        <div class="card-title">Logic Gates</div>
+        <div class="card-desc">AND, OR, NOT, XOR, NAND, NOR — the universal building blocks. Truth tables, Boolean expressions, and circuit diagrams.</div>
+        <div class="card-tag" style="color:#a855f7;border-color:#a855f7">TRUTH TABLES</div>
+      </div>
+      <div class="topic-card" style="--card-color:#00ff88" onclick="showPage('adder')">
+        <div class="card-icon">⊕</div>
+        <div class="card-title">Full Adder</div>
+        <div class="card-desc">Step through a 1-bit full adder with interactive toggles. See how sum and carry-out are computed from A, B, and Cin.</div>
+        <div class="card-tag" style="color:#00ff88;border-color:#00ff88">CIRCUIT SIM</div>
+      </div>
+      <div class="topic-card" style="--card-color:#ffb800" onclick="showPage('arithmetic')">
+        <div class="card-icon">±</div>
+        <div class="card-title">Binary Arithmetic</div>
+        <div class="card-desc">Addition, subtraction (2's complement), overflow detection, and carry propagation visualised step by step.</div>
+        <div class="card-tag" style="color:#ffb800;border-color:#ffb800">WALKTHROUGH</div>
+      </div>
+      <div class="topic-card" style="--card-color:#f472b6">
+        <div class="card-icon">⚑</div>
+        <div class="card-title">Status Flags</div>
+        <div class="card-desc">Zero (Z), Carry (C), Overflow (V), Negative (N) — how each flag is set and how the CPU uses them for branching.</div>
+        <div class="card-tag" style="color:#f472b6;border-color:#f472b6">FLAGS</div>
+      </div>
+      <div class="topic-card" style="--card-color:#00d4ff" onclick="showPage('code')">
+        <div class="card-icon">〈/〉</div>
+        <div class="card-title">Source Code</div>
+        <div class="card-desc">Complete implementation in Python, C, JavaScript and VHDL. Study how each operation maps to actual hardware or software.</div>
+        <div class="card-tag" style="color:#00d4ff;border-color:#00d4ff">4 LANGUAGES</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHITECTURE OVERVIEW -->
+  <div class="section">
+    <div class="section-title">ALU Architecture</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div>
+        <p style="font-size:12px;color:var(--muted);line-height:2;margin-bottom:16px">
+          An ALU takes two n-bit inputs (operand A and operand B), an operation selector (opcode), and a carry-in bit. It outputs a result register and a set of condition flags that reflect the outcome of the operation.
+        </p>
+        <div style="background:var(--bg3);border:1px solid var(--border);padding:20px;font-size:11px;line-height:2.2">
+          <div style="color:var(--accent)">// INPUTS</div>
+          <div><span style="color:var(--pink)">A</span>     [7:0]  — Operand A (8 bits)</div>
+          <div><span style="color:var(--pink)">B</span>     [7:0]  — Operand B (8 bits)</div>
+          <div><span style="color:var(--amber)">OP</span>    [3:0]  — Operation selector</div>
+          <div><span style="color:var(--purple)">Cin</span>  [0]    — Carry in</div>
+          <div style="margin-top:8px;color:var(--accent)">// OUTPUTS</div>
+          <div><span style="color:var(--green)">Result</span> [7:0]  — Computed result</div>
+          <div><span style="color:var(--green)">Z</span>      [0]    — Zero flag</div>
+          <div><span style="color:var(--green)">C</span>      [0]    — Carry flag</div>
+          <div><span style="color:var(--green)">V</span>      [0]    — Overflow flag</div>
+          <div><span style="color:var(--green)">N</span>      [0]    — Negative flag</div>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);padding:24px">
+        <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:16px">OPERATION TABLE</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:400">Opcode</th>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:400">Operation</th>
+              <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:400">Expression</th>
+            </tr>
+          </thead>
+          <tbody id="op-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: SIMULATOR -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-simulator" class="page">
+  <div class="section">
+    <div class="section-title">8-Bit ALU Simulator</div>
+    <div class="sim-layout">
+
+      <!-- INPUT PANEL -->
+      <div class="sim-panel">
+        <div class="sim-panel-title">// INPUTS</div>
+
+        <div class="input-group">
+          <div class="input-label">OPERAND A</div>
+          <div class="bit-row" id="bits-a"></div>
+          <div class="hex-display" id="hex-a">0x00</div>
+          <div class="dec-display" id="dec-a">dec: 0 | bin: 00000000</div>
+
+          <div class="input-label">OPERAND B</div>
+          <div class="bit-row" id="bits-b"></div>
+          <div class="hex-display" id="hex-b">0x00</div>
+          <div class="dec-display" id="dec-b">dec: 0 | bin: 00000000</div>
+        </div>
+
+        <div class="sim-panel-title" style="margin-top:8px">// OPERATION</div>
+        <div class="op-grid" id="op-grid"></div>
+        <button class="execute-btn" onclick="executeALU()">▶ EXECUTE</button>
+      </div>
+
+      <!-- ALU DIAGRAM -->
+      <div class="sim-panel alu-diagram">
+        <div class="sim-panel-title" style="width:100%;text-align:left">// ALU DATAPATH</div>
+        <div class="alu-canvas-wrap">
+          <svg id="alu-svg" viewBox="0 0 460 420" width="100%" style="max-height:420px"></svg>
+        </div>
+        <div id="alu-status" style="margin-top:12px;font-size:11px;color:var(--muted);letter-spacing:1px;text-align:center">
+          — ready —
+        </div>
+      </div>
+
+      <!-- RESULT PANEL -->
+      <div class="sim-panel">
+        <div class="sim-panel-title">// RESULT</div>
+        <div class="result-section">
+          <div class="result-label">DECIMAL</div>
+          <div class="result-big" id="result-dec">--</div>
+          <div class="result-hex" id="result-hex">0x--</div>
+          <div class="result-bin" id="result-bin">--------</div>
+
+          <div class="result-label">STATUS FLAGS</div>
+          <div class="flags-row" id="flags-row">
+            <div class="flag" id="flag-z"><div class="flag-dot"></div>Z</div>
+            <div class="flag" id="flag-c"><div class="flag-dot"></div>C</div>
+            <div class="flag" id="flag-v"><div class="flag-dot"></div>V</div>
+            <div class="flag" id="flag-n"><div class="flag-dot"></div>N</div>
+          </div>
+
+          <div class="result-label">OPERATION LOG</div>
+          <div class="history-list" id="history-list">
+            <div style="font-size:11px;color:var(--muted);padding:8px 0">No operations yet...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: LOGIC GATES -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-gates" class="page">
+  <div class="section">
+    <div class="section-title">Logic Gates & Truth Tables</div>
+    <div class="truth-controls" id="gate-controls"></div>
+    <div class="truth-layout">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// TRUTH TABLE</div>
+        <div class="truth-table-wrap" id="truth-table-wrap"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// GATE INFO</div>
+        <div class="gate-diagram" id="gate-diagram">
+          <svg id="gate-svg" viewBox="0 0 280 160" width="280" height="160"></svg>
+          <div class="gate-expr" id="gate-expr">A AND B</div>
+          <div class="gate-desc" id="gate-desc">Output is 1 only when BOTH inputs are 1. Used for masking bits and permission checks.</div>
+        </div>
+
+        <!-- Interactive gate tester -->
+        <div style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);padding:16px">
+          <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// LIVE TESTER</div>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;color:var(--muted)">A =</span>
+            <button class="toggle-bit" id="gate-a" onclick="toggleGateInput('a')">0</button>
+            <span style="font-size:11px;color:var(--muted)">B =</span>
+            <button class="toggle-bit" id="gate-b" onclick="toggleGateInput('b')">0</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:11px;color:var(--muted)">OUT =</span>
+            <div id="gate-out" style="font-family:var(--display);font-size:28px;font-weight:700;color:var(--muted);transition:all 0.3s">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: FULL ADDER -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-adder" class="page">
+  <div class="section">
+    <div class="section-title">1-Bit Full Adder</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:24px;line-height:2">
+      A full adder computes the sum of three 1-bit inputs: A, B, and a Carry-in (Cin). It outputs a Sum bit and a Carry-out (Cout). Chain 8 of these to build an 8-bit adder.
+    </p>
+    <div class="adder-interactive">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:16px">// INPUTS</div>
+        <div class="adder-bits">
+          <div class="adder-bit-row">
+            <span class="adder-bit-label">A</span>
+            <button class="toggle-bit" id="fa-a" onclick="toggleFA('a')">0</button>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">Bit A</span>
+          </div>
+          <div class="adder-bit-row">
+            <span class="adder-bit-label">B</span>
+            <button class="toggle-bit" id="fa-b" onclick="toggleFA('b')">0</button>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">Bit B</span>
+          </div>
+          <div class="adder-bit-row">
+            <span class="adder-bit-label">Cin</span>
+            <button class="toggle-bit" id="fa-cin" onclick="toggleFA('cin')">0</button>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">Carry in</span>
+          </div>
+        </div>
+        <div class="adder-output-row" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+          <div class="adder-out">
+            <div class="adder-out-label">SUM</div>
+            <div class="adder-out-val off" id="fa-sum">0</div>
+          </div>
+          <div class="adder-out">
+            <div class="adder-out-label">CARRY OUT</div>
+            <div class="adder-out-val off" id="fa-cout">0</div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;background:var(--bg3);border:1px solid var(--border);padding:16px">
+          <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// BOOLEAN EXPRESSIONS</div>
+          <div style="font-size:12px;line-height:2.2;color:var(--muted)">
+            <div><span style="color:var(--green)">Sum</span>   = A ⊕ B ⊕ Cin</div>
+            <div><span style="color:var(--amber)">Cout</span>  = (A·B) + (B·Cin) + (A·Cin)</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);padding:16px">
+          <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// CURRENT STATE</div>
+          <div id="fa-state" style="font-size:12px;color:var(--muted);line-height:2">
+            A=0, B=0, Cin=0 → Sum=0, Cout=0
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// CIRCUIT DIAGRAM</div>
+        <svg id="fa-svg" viewBox="0 0 380 300" width="100%" style="background:var(--bg3);border:1px solid var(--border)"></svg>
+
+        <div style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);padding:16px">
+          <div style="font-size:10px;letter-spacing:3px;color:var(--accent);margin-bottom:12px">// FULL ADDER TRUTH TABLE</div>
+          <table class="truth" style="font-size:11px">
+            <thead>
+              <tr><th>A</th><th>B</th><th>Cin</th><th>Sum</th><th>Cout</th></tr>
+            </thead>
+            <tbody id="fa-truth-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: ARITHMETIC -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-arithmetic" class="page">
+  <div class="section">
+    <div class="section-title">Binary Arithmetic</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex-wrap:wrap">
+
+      <!-- Addition -->
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--green);margin-bottom:16px">// BINARY ADDITION</div>
+        <div class="arith-demo" id="add-demo">
+          <div class="arith-row">
+            <span class="arith-op-sym"></span>
+            <span class="arith-val" id="add-a-bin">00110101</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px" id="add-a-dec">(53)</span>
+          </div>
+          <div class="arith-row">
+            <span class="arith-op-sym" style="color:var(--green)">+</span>
+            <span class="arith-val" id="add-b-bin">00011010</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px" id="add-b-dec">(26)</span>
+          </div>
+          <div class="arith-line">
+            <div class="carry-row" id="add-carry">Carry: 0 1 1 0 1 1 0 0</div>
+          </div>
+          <div class="arith-row arith-result">
+            <span class="arith-op-sym">=</span>
+            <span id="add-result-bin">01001111</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px" id="add-result-dec">(79)</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <input type="number" id="add-in-a" value="53" min="0" max="127"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateAddDemo()">
+          <span style="line-height:36px;color:var(--green);font-size:18px">+</span>
+          <input type="number" id="add-in-b" value="26" min="0" max="127"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateAddDemo()">
+        </div>
+      </div>
+
+      <!-- 2's Complement Subtraction -->
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--amber);margin-bottom:16px">// 2'S COMPLEMENT SUBTRACTION</div>
+        <div class="arith-demo">
+          <div style="font-size:11px;color:var(--muted);line-height:2;margin-bottom:16px">
+            A - B  =  A + (~B + 1)
+          </div>
+          <div class="step-adder" id="sub-steps"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <input type="number" id="sub-in-a" value="60" min="0" max="127"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateSubDemo()">
+          <span style="line-height:36px;color:var(--amber);font-size:18px">−</span>
+          <input type="number" id="sub-in-b" value="22" min="0" max="127"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateSubDemo()">
+        </div>
+      </div>
+
+      <!-- Overflow -->
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--red);margin-bottom:16px">// OVERFLOW DETECTION</div>
+        <div class="arith-demo">
+          <div style="font-size:11px;color:var(--muted);line-height:2;margin-bottom:12px">
+            Overflow occurs when the result exceeds the signed range [-128, +127] for 8-bit numbers.
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:2">
+            <div><span style="color:var(--text)">Rule:</span> Overflow when carry into MSB ≠ carry out of MSB</div>
+            <div><span style="color:var(--text)">Flag V</span> = Cn-1 XOR Cn</div>
+          </div>
+          <div style="margin-top:16px;padding:12px;background:rgba(255,64,96,0.06);border:1px solid rgba(255,64,96,0.2)">
+            <div style="font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:8px">OVERFLOW EXAMPLE</div>
+            <div style="font-family:var(--display);font-size:12px;line-height:2.2;color:var(--muted)">
+              <div>  01111111 (+127)</div>
+              <div><span style="color:var(--red)">+</span> 00000001 (+1)</div>
+              <div style="border-top:1px solid var(--border2);padding-top:6px;color:var(--red)">= 10000000 (-128) ← OVERFLOW!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bitwise Ops -->
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--purple);margin-bottom:16px">// BITWISE OPERATIONS</div>
+        <div class="arith-demo">
+          <div style="font-size:12px;color:var(--muted);line-height:2.2" id="bitwise-demo">
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <input type="number" id="bw-in-a" value="170" min="0" max="255"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateBitwiseDemo()">
+          <input type="number" id="bw-in-b" value="204" min="0" max="255"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px"
+            oninput="updateBitwiseDemo()">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE: CODE -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-code" class="page">
+  <div class="section">
+    <div class="section-title">ALU Source Code</div>
+    <div class="code-tabs">
+      <button class="code-tab active" onclick="showCode('python')">Python</button>
+      <button class="code-tab" onclick="showCode('c')">C</button>
+      <button class="code-tab" onclick="showCode('js')">JavaScript</button>
+      <button class="code-tab" onclick="showCode('vhdl')">VHDL</button>
+      <button class="code-tab" onclick="showCode('verilog')">Verilog</button>
+    </div>
+    <div class="code-block">
+      <pre id="code-display"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- JAVASCRIPT -->
+<!-- ══════════════════════════════════════════════ -->
+<script>
+// ── DATA ──────────────────────────────────────────────────
+
+const OPS = [
+  {id:'add',  sym:'+',  name:'ADD',  label:'A + B'},
+  {id:'sub',  sym:'−',  name:'SUB',  label:'A − B'},
+  {id:'mul',  sym:'×',  name:'MUL',  label:'A × B'},
+  {id:'div',  sym:'÷',  name:'DIV',  label:'A ÷ B'},
+  {id:'and',  sym:'&',  name:'AND',  label:'A AND B'},
+  {id:'or',   sym:'|',  name:'OR',   label:'A OR B'},
+  {id:'xor',  sym:'^',  name:'XOR',  label:'A XOR B'},
+  {id:'not',  sym:'~',  name:'NOT',  label:'NOT A'},
+  {id:'shl',  sym:'<<', name:'SHL',  label:'A << 1'},
+  {id:'shr',  sym:'>>', name:'SHR',  label:'A >> 1'},
+  {id:'nand', sym:'↑',  name:'NAND', label:'A NAND B'},
+  {id:'nor',  sym:'↓',  name:'NOR',  label:'A NOR B'},
+];
+
+const OPCODES = [
+  {op:'0000',name:'ADD',  expr:'A + B'},
+  {op:'0001',name:'SUB',  expr:'A - B'},
+  {op:'0010',name:'MUL',  expr:'A × B'},
+  {op:'0011',name:'DIV',  expr:'A ÷ B'},
+  {op:'0100',name:'AND',  expr:'A & B'},
+  {op:'0101',name:'OR',   expr:'A | B'},
+  {op:'0110',name:'XOR',  expr:'A ^ B'},
+  {op:'0111',name:'NOT',  expr:'~A'},
+  {op:'1000',name:'SHL',  expr:'A << 1'},
+  {op:'1001',name:'SHR',  expr:'A >> 1'},
+  {op:'1010',name:'NAND', expr:'~(A & B)'},
+  {op:'1011',name:'NOR',  expr:'~(A | B)'},
+];
+
+const GATES = [
+  {id:'AND',  inputs:2, fn:(a,b)=>a&b,      expr:'Y = A · B',     desc:'Output is 1 only when BOTH inputs are 1. Used for masking and permission checking.'},
+  {id:'OR',   inputs:2, fn:(a,b)=>a|b,      expr:'Y = A + B',     desc:'Output is 1 when AT LEAST ONE input is 1. Used for combining conditions.'},
+  {id:'NOT',  inputs:1, fn:(a)=>(a?0:1),    expr:'Y = Ā',         desc:'Inverts the input. The fundamental inversion operation in digital logic.'},
+  {id:'XOR',  inputs:2, fn:(a,b)=>a^b,      expr:'Y = A ⊕ B',     desc:'Output is 1 when inputs DIFFER. Critical for addition (sum bit computation).'},
+  {id:'NAND', inputs:2, fn:(a,b)=>(a&b)?0:1,expr:'Y = (A · B)\'', desc:'NOT AND — universal gate. Any logic function can be built from NAND gates alone.'},
+  {id:'NOR',  inputs:2, fn:(a,b)=>(a|b)?0:1,expr:'Y = (A + B)\'', desc:'NOT OR — universal gate. Any logic function can be built from NOR gates alone.'},
+  {id:'XNOR', inputs:2, fn:(a,b)=>(a^b)?0:1,expr:'Y = A ⊙ B',    desc:'Equality checker. Output is 1 when both inputs are EQUAL. Used in comparators.'},
+];
+
+// ── STATE ─────────────────────────────────────────────────
+
+let bitsA = new Array(8).fill(0);
+let bitsB = new Array(8).fill(0);
+let selectedOp = 'add';
+let history = [];
+let selectedGate = 0;
+let gateA = 0, gateB = 0;
+let faState = {a:0,b:0,cin:0};
+
+// ── NAVIGATION ────────────────────────────────────────────
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const pageOrder = ['overview','simulator','gates','adder','arithmetic','code'];
+  const idx = pageOrder.indexOf(id);
+  if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
+
+  if(id==='simulator') drawALU();
+  if(id==='gates') renderGates();
+  if(id==='adder') { renderFATruth(); drawFA(); }
+  if(id==='arithmetic') { updateAddDemo(); updateSubDemo(); updateBitwiseDemo(); }
+  if(id==='code') showCode('python');
+}
+
+// ── SIMULATOR SETUP ───────────────────────────────────────
+
+function buildBitButtons() {
+  ['a','b'].forEach(reg => {
+    const container = document.getElementById('bits-'+reg);
+    container.innerHTML = '';
+    for(let i=7;i>=0;i--) {
+      const btn = document.createElement('button');
+      btn.className = 'bit-btn';
+      btn.textContent = reg==='a' ? bitsA[i] : bitsB[i];
+      btn.dataset.reg = reg;
+      btn.dataset.bit = i;
+      btn.onclick = () => toggleBit(reg, i);
+      if((reg==='a'?bitsA:bitsB)[i]) btn.classList.add('on');
+      container.appendChild(btn);
+    }
+  });
+}
+
+function toggleBit(reg, bit) {
+  if(reg==='a') bitsA[bit] ^= 1;
+  else bitsB[bit] ^= 1;
+  buildBitButtons();
+  updateDisplays();
+}
+
+function updateDisplays() {
+  const va = bitsToNum(bitsA), vb = bitsToNum(bitsB);
+  document.getElementById('hex-a').textContent = '0x'+va.toString(16).toUpperCase().padStart(2,'0');
+  document.getElementById('hex-b').textContent = '0x'+vb.toString(16).toUpperCase().padStart(2,'0');
+  document.getElementById('dec-a').textContent = `dec: ${va} | bin: ${bitsA.slice().reverse().join('')}`;
+  document.getElementById('dec-b').textContent = `dec: ${vb} | bin: ${bitsB.slice().reverse().join('')}`;
+}
+
+function bitsToNum(arr) {
+  return arr.reduce((acc,b,i)=>acc+(b<<i),0);
+}
+
+function numToBin8(n) {
+  return (n&0xFF).toString(2).padStart(8,'0');
+}
+
+function buildOpButtons() {
+  const grid = document.getElementById('op-grid');
+  grid.innerHTML = '';
+  OPS.forEach(op => {
+    const btn = document.createElement('button');
+    btn.className = 'op-btn' + (op.id===selectedOp?' active':'');
+    btn.innerHTML = `<span class="op-sym">${op.sym}</span><span class="op-name">${op.name}</span>`;
+    btn.onclick = () => {
+      selectedOp = op.id;
+      document.querySelectorAll('.op-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function executeALU() {
+  const a = bitsToNum(bitsA);
+  const b = bitsToNum(bitsB);
+  let result=0, carry=0, overflow=false;
+  const opNames = {add:'ADD',sub:'SUB',mul:'MUL',div:'DIV',and:'AND',or:'OR',xor:'XOR',not:'NOT',shl:'SHL',shr:'SHR',nand:'NAND',nor:'NOR'};
+  const opSyms  = {add:'+',sub:'−',mul:'×',div:'÷',and:'&',or:'|',xor:'^',not:'~',shl:'<<',shr:'>>',nand:'↑',nor:'↓'};
+
+  switch(selectedOp) {
+    case 'add': {
+      const r = a + b;
+      result = r & 0xFF;
+      carry = r > 255 ? 1 : 0;
+      overflow = ((a&0x80)===0&&(b&0x80)===0&&(result&0x80)!==0) || ((a&0x80)!==0&&(b&0x80)!==0&&(result&0x80)===0);
+      break;
+    }
+    case 'sub': {
+      const r = a - b;
+      result = ((r%256)+256)%256;
+      carry = r < 0 ? 1 : 0;
+      overflow = ((a&0x80)===0&&(b&0x80)!==0&&(result&0x80)!==0) || ((a&0x80)!==0&&(b&0x80)===0&&(result&0x80)===0);
+      break;
+    }
+    case 'mul': result=(a*b)&0xFF; break;
+    case 'div': result=b?Math.floor(a/b)&0xFF:0; break;
+    case 'and': result=a&b; break;
+    case 'or':  result=a|b; break;
+    case 'xor': result=a^b; break;
+    case 'not': result=(~a)&0xFF; break;
+    case 'shl': result=(a<<1)&0xFF; carry=(a>>7)&1; break;
+    case 'shr': result=(a>>1)&0xFF; carry=a&1; break;
+    case 'nand':result=~(a&b)&0xFF; break;
+    case 'nor': result=~(a|b)&0xFF; break;
+  }
+
+  const zFlag = result===0;
+  const nFlag = (result&0x80)!==0;
+
+  // Update result display
+  const resDec = document.getElementById('result-dec');
+  resDec.textContent = result;
+  resDec.classList.add('processing');
+  setTimeout(()=>resDec.classList.remove('processing'),600);
+
+  document.getElementById('result-hex').textContent = '0x'+result.toString(16).toUpperCase().padStart(2,'0');
+  document.getElementById('result-bin').textContent = numToBin8(result);
+
+  // Flags
+  setFlag('z', zFlag);
+  setFlag('c', carry===1);
+  setFlag('v', overflow);
+  setFlag('n', nFlag);
+
+  // History
+  const sym = opSyms[selectedOp];
+  const expr = selectedOp==='not' ? `~${a}` : `${a} ${sym} ${b}`;
+  history.unshift({expr, result, op:opNames[selectedOp]});
+  if(history.length>10) history.pop();
+  renderHistory();
+
+  // Update status
+  document.getElementById('alu-status').textContent =
+    `${opNames[selectedOp]}: ${a} ${sym} ${b} = ${result}`;
+
+  drawALU(true);
+}
+
+function setFlag(id, active) {
+  const el = document.getElementById('flag-'+id);
+  if(active) el.classList.add('set'); else el.classList.remove('set');
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if(!history.length) return;
+  list.innerHTML = history.map(h=>`
+    <div class="hist-item">
+      <span class="hist-expr">${h.op}: ${h.expr}</span>
+      <span class="hist-res">${h.result}</span>
+    </div>`).join('');
+}
+
+// ── ALU SVG ───────────────────────────────────────────────
+
+function drawALU(active=false) {
+  const svg = document.getElementById('alu-svg');
+  const a = bitsToNum(bitsA), b = bitsToNum(bitsB);
+  const ac = active ? '#00d4ff' : '#1e3a5f';
+  const gc = active ? '#00ff88' : '#1e3a5f';
+  const lc = active ? 'rgba(0,212,255,0.3)' : 'rgba(30,58,95,0.5)';
+  const op = OPS.find(o=>o.id===selectedOp)||OPS[0];
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="${ac}" stroke-width="1.5"/>
+      </marker>
+      <marker id="gh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="${gc}" stroke-width="1.5"/>
+      </marker>
+    </defs>
+
+    <!-- Input A Bus -->
+    <rect x="10" y="40" width="90" height="36" rx="3" fill="#0d1626" stroke="${ac}" stroke-width="1"/>
+    <text x="55" y="62" text-anchor="middle" fill="${ac}" font-size="11" font-family="'Share Tech Mono'" letter-spacing="1">
+      A: ${a.toString(16).toUpperCase().padStart(2,'0')}h
+    </text>
+    <line x1="100" y1="58" x2="150" y2="58" stroke="${ac}" stroke-width="1.5" marker-end="url(#ah)"/>
+
+    <!-- Input B Bus -->
+    <rect x="10" y="130" width="90" height="36" rx="3" fill="#0d1626" stroke="${ac}" stroke-width="1"/>
+    <text x="55" y="152" text-anchor="middle" fill="${ac}" font-size="11" font-family="'Share Tech Mono'" letter-spacing="1">
+      B: ${b.toString(16).toUpperCase().padStart(2,'0')}h
+    </text>
+    <line x1="100" y1="148" x2="150" y2="148" stroke="${ac}" stroke-width="1.5" marker-end="url(#ah)"/>
+
+    <!-- OP SELECT -->
+    <rect x="10" y="220" width="90" height="36" rx="3" fill="#0d1626" stroke="#ffb800" stroke-width="1"/>
+    <text x="55" y="242" text-anchor="middle" fill="#ffb800" font-size="11" font-family="'Share Tech Mono'" letter-spacing="1">${op.name}</text>
+    <line x1="100" y1="238" x2="150" y2="238" stroke="#ffb800" stroke-width="1.5"/>
+    <line x1="150" y1="238" x2="150" y2="160" stroke="#ffb800" stroke-width="1" stroke-dasharray="4 2"/>
+
+    <!-- ALU BODY (trapezoid shape) -->
+    <polygon points="150,30 310,50 310,270 150,290" fill="#0f1929" stroke="${active?'#00d4ff':'#1e3a5f'}" stroke-width="${active?2:1}"/>
+    <text x="230" y="145" text-anchor="middle" fill="${active?'#00d4ff':'#2a5280'}" font-family="'Orbitron'" font-size="22" font-weight="900" letter-spacing="3">ALU</text>
+    <text x="230" y="175" text-anchor="middle" fill="${active?'rgba(0,212,255,0.5)':'#1e3a5f'}" font-family="'Share Tech Mono'" font-size="11">${op.label}</text>
+
+    <!-- Output wire -->
+    <line x1="310" y1="160" x2="380" y2="160" stroke="${gc}" stroke-width="2" marker-end="url(#gh)"/>
+
+    <!-- Result Box -->
+    <rect x="380" y="130" width="70" height="60" rx="3" fill="#0d1626" stroke="${gc}" stroke-width="${active?1.5:1}"/>
+    <text x="415" y="155" text-anchor="middle" fill="${active?'#00ff88':'#2a5280'}" font-family="'Share Tech Mono'" font-size="10" letter-spacing="1">RESULT</text>
+    <text x="415" y="178" text-anchor="middle" fill="${active?'#00ff88':'#2a5280'}" font-family="'Orbitron'" font-size="13" font-weight="700">
+      ${active?bitsToNum(bitsA).toString(16).toUpperCase().padStart(2,'0'):'--'}
+    </text>
+
+    <!-- Flags -->
+    ${['Z','C','V','N'].map((f,i)=>`
+      <rect x="${380+i*18}" y="210" width="14" height="16" rx="2"
+        fill="${active && document.getElementById('flag-'+f.toLowerCase()).classList.contains('set')?'rgba(0,255,136,0.2)':'#0d1626'}"
+        stroke="${active && document.getElementById('flag-'+f.toLowerCase()).classList.contains('set')?'#00ff88':'#1e3a5f'}"
+        stroke-width="1"/>
+      <text x="${387+i*18}" y="222" text-anchor="middle"
+        fill="${active && document.getElementById('flag-'+f.toLowerCase()).classList.contains('set')?'#00ff88':'#2a5280'}"
+        font-family="'Share Tech Mono'" font-size="9">${f}</text>
+    `).join('')}
+    <text x="447" y="222" fill="#2a5280" font-family="'Share Tech Mono'" font-size="9">FLAGS</text>
+
+    <!-- Labels -->
+    <text x="55" y="30" text-anchor="middle" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="9" letter-spacing="1">OPERAND A</text>
+    <text x="55" y="122" text-anchor="middle" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="9" letter-spacing="1">OPERAND B</text>
+    <text x="55" y="212" text-anchor="middle" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="9" letter-spacing="1">OP SELECT</text>
+
+    <!-- Clock indicator -->
+    <circle cx="230" cy="355" r="20" fill="none" stroke="${active?'#00d4ff':'#1e3a5f'}" stroke-width="1"/>
+    <text x="230" y="360" text-anchor="middle" fill="${active?'#00d4ff':'#2a5280'}" font-family="'Share Tech Mono'" font-size="9">CLK</text>
+    <line x1="222" y1="355" x2="228" y2="355" stroke="${active?'#00d4ff':'#2a5280'}" stroke-width="1"/>
+    <line x1="228" y1="349" x2="228" y2="355" stroke="${active?'#00d4ff':'#2a5280'}" stroke-width="1"/>
+    <line x1="228" y1="355" x2="234" y2="355" stroke="${active?'#00d4ff':'#2a5280'}" stroke-width="1"/>
+    <line x1="234" y1="355" x2="234" y2="349" stroke="${active?'#00d4ff':'#2a5280'}" stroke-width="1"/>
+    <line x1="234" y1="349" x2="238" y2="349" stroke="${active?'#00d4ff':'#2a5280'}" stroke-width="1"/>
+
+    <!-- N-bit label on ALU -->
+    <text x="227" y="38" text-anchor="middle" fill="#1e3a5f" font-family="'Share Tech Mono'" font-size="9">8-BIT</text>
+  `;
+}
+
+// ── LOGIC GATES ───────────────────────────────────────────
+
+function renderGates() {
+  const controls = document.getElementById('gate-controls');
+  controls.innerHTML = '';
+  GATES.forEach((g,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'gate-sel-btn'+(i===selectedGate?' active':'');
+    btn.textContent = g.id;
+    btn.onclick = ()=>{ selectedGate=i; renderGates(); };
+    controls.appendChild(btn);
+  });
+
+  const gate = GATES[selectedGate];
+  renderTruthTable(gate);
+  drawGateSVG(gate);
+  document.getElementById('gate-expr').textContent = gate.expr;
+  document.getElementById('gate-desc').textContent = gate.desc;
+  updateGateLiveTester();
+}
+
+function renderTruthTable(gate) {
+  const wrap = document.getElementById('truth-table-wrap');
+  let html = '<table class="truth"><thead><tr>';
+  if(gate.inputs===2) html += '<th>A</th><th>B</th>';
+  else html += '<th>A</th>';
+  html += `<th>${gate.id}</th></tr></thead><tbody>`;
+  const rows = gate.inputs===2 ? [[0,0],[0,1],[1,0],[1,1]] : [[0],[1]];
+  rows.forEach(r => {
+    const out = gate.inputs===2 ? gate.fn(r[0],r[1]) : gate.fn(r[0]);
+    html += `<tr>
+      <td class="${r[0]?'one':'zero'}">${r[0]}</td>
+      ${gate.inputs===2?`<td class="${r[1]?'one':'zero'}">${r[1]}</td>`:''}
+      <td class="${out?'one':'zero'}">${out}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function drawGateSVG(gate) {
+  const svg = document.getElementById('gate-svg');
+  const gid = gate.id;
+  let inner = '';
+
+  // Gate shapes using SVG paths
+  const shapes = {
+    AND: `<path d="M90 50 L90 110 L120 110 Q160 110 160 80 Q160 50 120 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="60" y1="65" x2="90" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="60" y1="95" x2="90" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="160" y1="80" x2="200" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="30" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="30" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="208" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    OR:  `<path d="M85 50 Q105 80 85 110 Q120 110 148 80 Q120 50 85 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="65" x2="90" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="95" x2="90" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="148" y1="80" x2="195" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="30" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="30" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="200" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    NOT: `<polygon points="80,45 155,80 80,115" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <circle cx="160" cy="80" r="6" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="40" y1="80" x2="80" y2="80" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="166" y1="80" x2="200" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="22" y="84" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="205" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    XOR: `<path d="M85 50 Q105 80 85 110 Q120 110 148 80 Q120 50 85 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <path d="M75 50 Q95 80 75 110" fill="none" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="65" x2="88" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="95" x2="88" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="148" y1="80" x2="195" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="28" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="28" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="200" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    NAND:`<path d="M90 50 L90 110 L120 110 Q160 110 160 80 Q160 50 120 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <circle cx="166" cy="80" r="6" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="60" y1="65" x2="90" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="60" y1="95" x2="90" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="172" y1="80" x2="200" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="30" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="30" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="205" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    NOR: `<path d="M85 50 Q105 80 85 110 Q120 110 148 80 Q120 50 85 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <circle cx="154" cy="80" r="6" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="65" x2="90" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="95" x2="90" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="160" y1="80" x2="195" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="28" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="28" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="200" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`,
+
+    XNOR:`<path d="M85 50 Q105 80 85 110 Q120 110 148 80 Q120 50 85 50 Z" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <path d="M75 50 Q95 80 75 110" fill="none" stroke="#a855f7" stroke-width="1.5"/>
+          <circle cx="154" cy="80" r="6" fill="#111e33" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="65" x2="88" y2="65" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="55" y1="95" x2="88" y2="95" stroke="#a855f7" stroke-width="1.5"/>
+          <line x1="160" y1="80" x2="195" y2="80" stroke="#00ff88" stroke-width="1.5"/>
+          <text x="28" y="69" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">A</text>
+          <text x="28" y="99" fill="#00d4ff" font-family="'Share Tech Mono'" font-size="12">B</text>
+          <text x="200" y="84" fill="#00ff88" font-family="'Share Tech Mono'" font-size="12">Y</text>`
+  };
+
+  svg.innerHTML = `
+    <rect width="280" height="160" fill="var(--bg3)"/>
+    ${shapes[gid]||shapes.AND}
+    <text x="140" y="148" text-anchor="middle" fill="#2a5280" font-family="'Share Tech Mono'" font-size="9" letter-spacing="2">${gid} GATE</text>
+  `;
+}
+
+function toggleGateInput(inp) {
+  if(inp==='a') gateA ^= 1;
+  else gateB ^= 1;
+  updateGateLiveTester();
+}
+
+function updateGateLiveTester() {
+  const gate = GATES[selectedGate];
+  const btnA = document.getElementById('gate-a');
+  const btnB = document.getElementById('gate-b');
+  if(btnA){
+    btnA.textContent = gateA;
+    if(gateA) btnA.classList.add('on'); else btnA.classList.remove('on');
+  }
+  if(btnB){
+    btnB.textContent = gateB;
+    if(gateB) btnB.classList.add('on'); else btnB.classList.remove('on');
+    btnB.style.display = gate.inputs===1?'none':'';
+  }
+  const out = gate.inputs===2 ? gate.fn(gateA,gateB) : gate.fn(gateA);
+  const outEl = document.getElementById('gate-out');
+  if(outEl){
+    outEl.textContent = out;
+    outEl.style.color = out ? 'var(--green)' : 'var(--muted)';
+    outEl.style.textShadow = out ? '0 0 12px rgba(0,255,136,0.4)' : 'none';
+  }
+}
+
+// ── FULL ADDER ────────────────────────────────────────────
+
+function renderFATruth() {
+  const tbody = document.getElementById('fa-truth-body');
+  tbody.innerHTML = '';
+  for(let a=0;a<=1;a++) for(let b=0;b<=1;b++) for(let c=0;c<=1;c++) {
+    const sum = a^b^c;
+    const cout = ((a&b)|(b&c)|(a&c));
+    const cur = (a===faState.a && b===faState.b && c===faState.cin);
+    tbody.innerHTML += `<tr style="${cur?'background:rgba(0,212,255,0.05)':''}">
+      <td class="${a?'one':'zero'}">${a}</td>
+      <td class="${b?'one':'zero'}">${b}</td>
+      <td class="${c?'one':'zero'}">${c}</td>
+      <td class="${sum?'one':'zero'}">${sum}</td>
+      <td class="${cout?'one':'zero'}">${cout}</td>
+    </tr>`;
+  }
+}
+
+function toggleFA(inp) {
+  faState[inp] ^= 1;
+  const btn = document.getElementById('fa-'+inp);
+  btn.textContent = faState[inp];
+  if(faState[inp]) btn.classList.add('on'); else btn.classList.remove('on');
+  updateFAOutput();
+  drawFA();
+  renderFATruth();
+}
+
+function updateFAOutput() {
+  const {a,b,cin} = faState;
+  const sum = a^b^cin;
+  const cout = ((a&b)|(b&cin)|(a&cin));
+
+  const sumEl = document.getElementById('fa-sum');
+  const coutEl = document.getElementById('fa-cout');
+
+  sumEl.textContent = sum;
+  coutEl.textContent = cout;
+  [sumEl,coutEl].forEach(el => {
+    const v = parseInt(el.textContent);
+    if(v) {el.classList.add('on');el.classList.remove('off');}
+    else {el.classList.remove('on');el.classList.add('off');}
+  });
+
+  document.getElementById('fa-state').textContent =
+    `A=${a}, B=${b}, Cin=${cin} → Sum=${sum}, Cout=${cout}`;
+}
+
+function drawFA() {
+  const {a,b,cin} = faState;
+  const sum = a^b^cin;
+  const cout= ((a&b)|(b&cin)|(a&cin));
+  const svg = document.getElementById('fa-svg');
+
+  const wc = (v)=>v?'#00d4ff':'#1e3a5f';
+  const gc = (v)=>v?'#00ff88':'#1e3a5f';
+  const fc = '#0d1626';
+
+  svg.innerHTML = `
+    <!-- Input lines -->
+    <line x1="20" y1="50" x2="100" y2="50" stroke="${wc(a)}" stroke-width="1.5"/>
+    <line x1="20" y1="100" x2="100" y2="100" stroke="${wc(b)}" stroke-width="1.5"/>
+    <line x1="20" y1="150" x2="60" y2="150" stroke="${wc(cin)}" stroke-width="1.5"/>
+
+    <!-- XOR gate 1 (A xor B) -->
+    <rect x="100" y="65" width="60" height="40" rx="4" fill="${fc}" stroke="${wc(a^b)}" stroke-width="1"/>
+    <text x="130" y="90" text-anchor="middle" fill="${wc(a^b)}" font-family="'Share Tech Mono'" font-size="10">XOR</text>
+
+    <!-- AND gate 1 (A and B) -->
+    <rect x="100" y="155" width="60" height="40" rx="4" fill="${fc}" stroke="${wc(a&b)}" stroke-width="1"/>
+    <text x="130" y="180" text-anchor="middle" fill="${wc(a&b)}" font-family="'Share Tech Mono'" font-size="10">AND</text>
+
+    <!-- Wire from xor1 to xor2 -->
+    <line x1="160" y1="85" x2="200" y2="85" stroke="${wc(a^b)}" stroke-width="1.5"/>
+    <line x1="60" y1="150" x2="60" y2="120" stroke="${wc(cin)}" stroke-width="1.5"/>
+    <line x1="60" y1="120" x2="200" y2="120" stroke="${wc(cin)}" stroke-width="1.5"/>
+
+    <!-- XOR gate 2 (sum) -->
+    <rect x="200" y="95" width="60" height="40" rx="4" fill="${fc}" stroke="${gc(sum)}" stroke-width="1"/>
+    <text x="230" y="120" text-anchor="middle" fill="${gc(sum)}" font-family="'Share Tech Mono'" font-size="10">XOR</text>
+
+    <!-- AND gate 2 (cin and (a xor b)) -->
+    <rect x="200" y="155" width="60" height="40" rx="4" fill="${fc}" stroke="${wc((a^b)&cin)}" stroke-width="1"/>
+    <text x="230" y="180" text-anchor="middle" fill="${wc((a^b)&cin)}" font-family="'Share Tech Mono'" font-size="10">AND</text>
+
+    <!-- Sum output -->
+    <line x1="260" y1="115" x2="360" y2="115" stroke="${gc(sum)}" stroke-width="1.5"/>
+    <text x="365" y="119" fill="${gc(sum)}" font-family="'Share Tech Mono'" font-size="11">SUM=${sum}</text>
+
+    <!-- OR gate (cout) -->
+    <rect x="280" y="160" width="60" height="40" rx="4" fill="${fc}" stroke="${gc(cout)}" stroke-width="1"/>
+    <text x="310" y="185" text-anchor="middle" fill="${gc(cout)}" font-family="'Share Tech Mono'" font-size="10">OR</text>
+
+    <!-- Wires to OR -->
+    <line x1="160" y1="175" x2="280" y2="175" stroke="${wc(a&b)}" stroke-width="1.5"/>
+    <line x1="260" y1="175" x2="280" y2="185" stroke="${wc((a^b)&cin)}" stroke-width="1.5"/>
+
+    <!-- Cout output -->
+    <line x1="340" y1="180" x2="360" y2="180" stroke="${gc(cout)}" stroke-width="1.5"/>
+    <text x="365" y="184" fill="${gc(cout)}" font-family="'Share Tech Mono'" font-size="11">COUT=${cout}</text>
+
+    <!-- Input labels -->
+    <text x="12" y="54" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="10">A=${a}</text>
+    <text x="12" y="104" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="10">B=${b}</text>
+    <text x="4" y="154" fill="#6b7fa0" font-family="'Share Tech Mono'" font-size="10">Cin=${cin}</text>
+  `;
+}
+
+// ── ARITHMETIC PAGE ───────────────────────────────────────
+
+function toBin8(n) {
+  return ((n&255)>>>0).toString(2).padStart(8,'0');
+}
+
+function updateAddDemo() {
+  const a = parseInt(document.getElementById('add-in-a').value)||0;
+  const b = parseInt(document.getElementById('add-in-b').value)||0;
+  const r = (a+b)&0xFF;
+  // Compute carry string
+  let carries = '', ca=0;
+  for(let i=0;i<8;i++){
+    const ai=(a>>i)&1, bi=(b>>i)&1;
+    ca=((ai+bi+ca)>1)?1:0;
+    carries = ca + carries;
+  }
+  document.getElementById('add-a-bin').textContent = toBin8(a);
+  document.getElementById('add-b-bin').textContent = toBin8(b);
+  document.getElementById('add-result-bin').textContent = toBin8(r);
+  document.getElementById('add-a-dec').textContent = `(${a})`;
+  document.getElementById('add-b-dec').textContent = `(${b})`;
+  document.getElementById('add-result-dec').textContent = `(${r})`;
+  document.getElementById('add-carry').textContent = 'Carry: '+carries;
+}
+
+function updateSubDemo() {
+  const a = parseInt(document.getElementById('sub-in-a').value)||0;
+  const b = parseInt(document.getElementById('sub-in-b').value)||0;
+  const notB = (~b)&0xFF;
+  const r = (a+notB+1)&0xFF;
+  const steps = document.getElementById('sub-steps');
+  steps.innerHTML = `
+    <div class="step-row"><div class="step-num">1</div><div class="step-text">Start with <strong>A = ${a}</strong> → ${toBin8(a)}</div></div>
+    <div class="step-row"><div class="step-num">2</div><div class="step-text">Find 1's complement of <strong>B = ${b}</strong>: ~${toBin8(b)} = ${toBin8(notB)}</div></div>
+    <div class="step-row"><div class="step-num">3</div><div class="step-text">Add 1 → 2's complement: ${toBin8(notB)} + 1 = ${toBin8((notB+1)&0xFF)}</div></div>
+    <div class="step-row"><div class="step-num">4</div><div class="step-text">A + 2's comp(B) = ${toBin8(a)} + ${toBin8((notB+1)&0xFF)}</div></div>
+    <div class="step-row"><div class="step-num">5</div><div class="step-text"><strong>Result = ${r}</strong> (${toBin8(r)})</div></div>
+  `;
+}
+
+function updateBitwiseDemo() {
+  const a = parseInt(document.getElementById('bw-in-a').value)||0;
+  const b = parseInt(document.getElementById('bw-in-b').value)||0;
+  const demo = document.getElementById('bitwise-demo');
+  demo.innerHTML = `
+    <div style="font-family:'Share Tech Mono';font-size:11px;line-height:2.5;background:var(--bg);padding:16px;border:1px solid var(--border)">
+      <div><span style="color:#6b7fa0;width:60px;display:inline-block">A     </span><span style="color:var(--text)">${toBin8(a)}</span><span style="color:#6b7fa0;margin-left:12px">(${a})</span></div>
+      <div><span style="color:#6b7fa0;width:60px;display:inline-block">B     </span><span style="color:var(--text)">${toBin8(b)}</span><span style="color:#6b7fa0;margin-left:12px">(${b})</span></div>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <div><span style="color:var(--accent);width:60px;display:inline-block">A AND B</span><span style="color:var(--green)">${toBin8(a&b)}</span><span style="color:#6b7fa0;margin-left:12px">(${a&b})</span></div>
+      <div><span style="color:var(--accent);width:60px;display:inline-block">A OR B </span><span style="color:var(--green)">${toBin8(a|b)}</span><span style="color:#6b7fa0;margin-left:12px">(${a|b})</span></div>
+      <div><span style="color:var(--accent);width:60px;display:inline-block">A XOR B</span><span style="color:var(--green)">${toBin8(a^b)}</span><span style="color:#6b7fa0;margin-left:12px">(${a^b})</span></div>
+      <div><span style="color:var(--purple);width:60px;display:inline-block">NOT A  </span><span style="color:var(--amber)">${toBin8(~a)}</span><span style="color:#6b7fa0;margin-left:12px">(${(~a)&0xFF})</span></div>
+      <div><span style="color:var(--amber);width:60px;display:inline-block">A << 1 </span><span style="color:var(--amber)">${toBin8(a<<1)}</span><span style="color:#6b7fa0;margin-left:12px">(${(a<<1)&0xFF})</span></div>
+      <div><span style="color:var(--amber);width:60px;display:inline-block">A >> 1 </span><span style="color:var(--amber)">${toBin8(a>>1)}</span><span style="color:#6b7fa0;margin-left:12px">(${a>>1})</span></div>
+    </div>
+  `;
+}
+
+// ── SOURCE CODE ───────────────────────────────────────────
+
+const CODES = {
+python: `<span class="cmt"># ╔══════════════════════════════════════╗
+# ║  8-BIT ALU IMPLEMENTATION — Python  ║
+# ╚══════════════════════════════════════╝</span>
+
+<span class="kw">from</span> <span class="type">dataclasses</span> <span class="kw">import</span> dataclass
+<span class="kw">from</span> <span class="type">enum</span> <span class="kw">import</span> Enum
+
+<span class="kw">class</span> <span class="type">Op</span>(Enum):
+    ADD  = <span class="num">0x0</span>
+    SUB  = <span class="num">0x1</span>
+    MUL  = <span class="num">0x2</span>
+    DIV  = <span class="num">0x3</span>
+    AND  = <span class="num">0x4</span>
+    OR   = <span class="num">0x5</span>
+    XOR  = <span class="num">0x6</span>
+    NOT  = <span class="num">0x7</span>
+    SHL  = <span class="num">0x8</span>
+    SHR  = <span class="num">0x9</span>
+    NAND = <span class="num">0xA</span>
+    NOR  = <span class="num">0xB</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="type">ALUResult</span>:
+    value:    <span class="type">int</span>  <span class="cmt"># 8-bit result</span>
+    zero:     <span class="type">bool</span> <span class="cmt"># Z flag — result is zero</span>
+    carry:    <span class="type">bool</span> <span class="cmt"># C flag — carry/borrow occurred</span>
+    overflow: <span class="type">bool</span> <span class="cmt"># V flag — signed overflow</span>
+    negative: <span class="type">bool</span> <span class="cmt"># N flag — result is negative</span>
+
+<span class="kw">class</span> <span class="type">ALU</span>:
+    MASK = <span class="num">0xFF</span>
+    MSB  = <span class="num">0x80</span>
+
+    <span class="kw">def</span> <span class="fn">execute</span>(self, a: <span class="type">int</span>, b: <span class="type">int</span>, op: <span class="type">Op</span>) -> <span class="type">ALUResult</span>:
+        <span class="str">"""Execute an ALU operation on two 8-bit operands."""</span>
+        a, b = a & self.MASK, b & self.MASK
+        result = carry = overflow = <span class="num">0</span>
+
+        <span class="kw">match</span> op:
+            <span class="kw">case</span> Op.ADD:
+                raw    = a + b
+                result = raw & self.MASK
+                carry  = raw >> <span class="num">8</span>
+                overflow = self._overflow_add(a, b, result)
+
+            <span class="kw">case</span> Op.SUB:
+                raw    = a - b
+                result = raw & self.MASK
+                carry  = <span class="num">1</span> <span class="kw">if</span> raw < <span class="num">0</span> <span class="kw">else</span> <span class="num">0</span>
+                overflow = self._overflow_sub(a, b, result)
+
+            <span class="kw">case</span> Op.MUL:
+                result = (a * b) & self.MASK
+
+            <span class="kw">case</span> Op.DIV:
+                result = (a // b) & self.MASK <span class="kw">if</span> b <span class="kw">else</span> <span class="num">0</span>
+
+            <span class="kw">case</span> Op.AND:
+                result = a & b
+
+            <span class="kw">case</span> Op.OR:
+                result = a | b
+
+            <span class="kw">case</span> Op.XOR:
+                result = a ^ b
+
+            <span class="kw">case</span> Op.NOT:
+                result = (~a) & self.MASK
+
+            <span class="kw">case</span> Op.SHL:
+                carry  = (a >> <span class="num">7</span>) & <span class="num">1</span>
+                result = (a << <span class="num">1</span>) & self.MASK
+
+            <span class="kw">case</span> Op.SHR:
+                carry  = a & <span class="num">1</span>
+                result = (a >> <span class="num">1</span>) & self.MASK
+
+            <span class="kw">case</span> Op.NAND:
+                result = ~(a & b) & self.MASK
+
+            <span class="kw">case</span> Op.NOR:
+                result = ~(a | b) & self.MASK
+
+        <span class="kw">return</span> ALUResult(
+            value    = result,
+            zero     = result == <span class="num">0</span>,
+            carry    = <span class="type">bool</span>(carry),
+            overflow = <span class="type">bool</span>(overflow),
+            negative = <span class="type">bool</span>(result & self.MSB),
+        )
+
+    <span class="kw">def</span> <span class="fn">_overflow_add</span>(self, a, b, r):
+        <span class="cmt"># Overflow when two positives give negative</span>
+        <span class="cmt"># or two negatives give positive (signed view)</span>
+        <span class="kw">return</span> (
+            ((a & self.MSB) == <span class="num">0</span> <span class="kw">and</span> (b & self.MSB) == <span class="num">0</span> <span class="kw">and</span> (r & self.MSB) != <span class="num">0</span>) <span class="kw">or</span>
+            ((a & self.MSB) != <span class="num">0</span> <span class="kw">and</span> (b & self.MSB) != <span class="num">0</span> <span class="kw">and</span> (r & self.MSB) == <span class="num">0</span>)
+        )
+
+    <span class="kw">def</span> <span class="fn">_overflow_sub</span>(self, a, b, r):
+        <span class="kw">return</span> (
+            ((a & self.MSB) == <span class="num">0</span> <span class="kw">and</span> (b & self.MSB) != <span class="num">0</span> <span class="kw">and</span> (r & self.MSB) != <span class="num">0</span>) <span class="kw">or</span>
+            ((a & self.MSB) != <span class="num">0</span> <span class="kw">and</span> (b & self.MSB) == <span class="num">0</span> <span class="kw">and</span> (r & self.MSB) == <span class="num">0</span>)
+        )
+
+<span class="cmt"># ── Demo ─────────────────────────────────────────────────</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    alu = <span class="type">ALU</span>()
+
+    tests = [
+        (<span class="num">53</span>,  <span class="num">26</span>,  Op.ADD,  <span class="str">"53 + 26 = 79"</span>),
+        (<span class="num">100</span>, <span class="num">37</span>,  Op.SUB,  <span class="str">"100 - 37 = 63"</span>),
+        (<span class="num">0b10110011</span>, <span class="num">0b11001100</span>, Op.AND, <span class="str">"Mask operation"</span>),
+        (<span class="num">0xFF</span>, <span class="num">0</span>,   Op.NOT,  <span class="str">"NOT 0xFF = 0x00"</span>),
+    ]
+
+    <span class="kw">for</span> a, b, op, desc <span class="kw">in</span> tests:
+        r = alu.execute(a, b, op)
+        <span class="fn">print</span>(<span class="str">f"[{op.name}] {desc}"</span>)
+        <span class="fn">print</span>(<span class="str">f"  Result: {r.value} (0x{r.value:02X}) | Z={int(r.zero)} C={int(r.carry)} V={int(r.overflow)} N={int(r.negative)}"</span>)`,
+
+c: `<span class="cmt">/* ╔══════════════════════════════════════╗
+   ║  8-BIT ALU IMPLEMENTATION — C99     ║
+   ╚══════════════════════════════════════╝ */</span>
+
+<span class="kw">#include</span> <span class="str">&lt;stdint.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdbool.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="cmt">/* Operation codes */</span>
+<span class="kw">typedef enum</span> {
+    OP_ADD  = <span class="num">0x0</span>, OP_SUB  = <span class="num">0x1</span>,
+    OP_MUL  = <span class="num">0x2</span>, OP_DIV  = <span class="num">0x3</span>,
+    OP_AND  = <span class="num">0x4</span>, OP_OR   = <span class="num">0x5</span>,
+    OP_XOR  = <span class="num">0x6</span>, OP_NOT  = <span class="num">0x7</span>,
+    OP_SHL  = <span class="num">0x8</span>, OP_SHR  = <span class="num">0x9</span>,
+    OP_NAND = <span class="num">0xA</span>, OP_NOR  = <span class="num">0xB</span>,
+} <span class="type">AluOp</span>;
+
+<span class="cmt">/* Status register (flags) */</span>
+<span class="kw">typedef struct</span> {
+    <span class="type">bool</span> Z; <span class="cmt">/* Zero     */</span>
+    <span class="type">bool</span> C; <span class="cmt">/* Carry    */</span>
+    <span class="type">bool</span> V; <span class="cmt">/* Overflow */</span>
+    <span class="type">bool</span> N; <span class="cmt">/* Negative */</span>
+} <span class="type">StatusReg</span>;
+
+<span class="cmt">/* ALU output */</span>
+<span class="kw">typedef struct</span> {
+    <span class="type">uint8_t</span>   result;
+    <span class="type">StatusReg</span> flags;
+} <span class="type">AluResult</span>;
+
+<span class="cmt">/* ── Full Adder (1-bit) ────────────────────────────── */</span>
+<span class="kw">static void</span> <span class="fn">full_adder</span>(<span class="type">uint8_t</span> a, <span class="type">uint8_t</span> b,
+                        <span class="type">uint8_t</span> cin,
+                        <span class="type">uint8_t</span> *sum, <span class="type">uint8_t</span> *cout) {
+    *sum  = a ^ b ^ cin;
+    *cout = (a & b) | (b & cin) | (a & cin);
+}
+
+<span class="cmt">/* ── 8-Bit Ripple-Carry Adder ──────────────────────── */</span>
+<span class="kw">static uint8_t</span> <span class="fn">ripple_add</span>(<span class="type">uint8_t</span> a, <span class="type">uint8_t</span> b,
+                           <span class="type">uint8_t</span> *carry_out) {
+    <span class="type">uint8_t</span> result = <span class="num">0</span>, cin = <span class="num">0</span>, s, co;
+    <span class="kw">for</span> (<span class="type">int</span> i = <span class="num">0</span>; i < <span class="num">8</span>; i++) {
+        <span class="fn">full_adder</span>((a >> i) & <span class="num">1</span>, (b >> i) & <span class="num">1</span>,
+                   cin, &s, &co);
+        result |= (s << i);
+        cin = co;
+    }
+    *carry_out = cin;
+    <span class="kw">return</span> result;
+}
+
+<span class="cmt">/* ── Main ALU Execute ──────────────────────────────── */</span>
+<span class="type">AluResult</span> <span class="fn">alu_execute</span>(<span class="type">uint8_t</span> a, <span class="type">uint8_t</span> b,
+                        <span class="type">AluOp</span>   op) {
+    <span class="type">AluResult</span> out = {<span class="num">0</span>};
+    <span class="type">uint8_t</span> carry = <span class="num">0</span>;
+
+    <span class="kw">switch</span> (op) {
+        <span class="kw">case</span> OP_ADD:
+            out.result = <span class="fn">ripple_add</span>(a, b, &carry);
+            out.flags.C = carry;
+            out.flags.V = !((a >> <span class="num">7</span>) ^ (b >> <span class="num">7</span>)) &&
+                          ((a >> <span class="num">7</span>) ^ (out.result >> <span class="num">7</span>));
+            <span class="kw">break</span>;
+
+        <span class="kw">case</span> OP_SUB: {
+            <span class="type">uint8_t</span> neg_b = (~b + <span class="num">1</span>) & <span class="num">0xFF</span>; <span class="cmt">/* 2's complement */</span>
+            out.result = <span class="fn">ripple_add</span>(a, neg_b, &carry);
+            out.flags.C = !carry; <span class="cmt">/* borrow = !carry */</span>
+            <span class="kw">break</span>;
+        }
+        <span class="kw">case</span> OP_MUL:  out.result = (a * b) & <span class="num">0xFF</span>;  <span class="kw">break</span>;
+        <span class="kw">case</span> OP_DIV:  out.result = b ? a / b : <span class="num">0</span>;    <span class="kw">break</span>;
+        <span class="kw">case</span> OP_AND:  out.result = a & b;             <span class="kw">break</span>;
+        <span class="kw">case</span> OP_OR:   out.result = a | b;             <span class="kw">break</span>;
+        <span class="kw">case</span> OP_XOR:  out.result = a ^ b;             <span class="kw">break</span>;
+        <span class="kw">case</span> OP_NOT:  out.result = ~a & <span class="num">0xFF</span>;        <span class="kw">break</span>;
+        <span class="kw">case</span> OP_SHL:
+            out.flags.C = (a >> <span class="num">7</span>) & <span class="num">1</span>;
+            out.result  = (a << <span class="num">1</span>) & <span class="num">0xFF</span>;
+            <span class="kw">break</span>;
+        <span class="kw">case</span> OP_SHR:
+            out.flags.C = a & <span class="num">1</span>;
+            out.result  = a >> <span class="num">1</span>;
+            <span class="kw">break</span>;
+        <span class="kw">case</span> OP_NAND: out.result = ~(a & b) & <span class="num">0xFF</span>;  <span class="kw">break</span>;
+        <span class="kw">case</span> OP_NOR:  out.result = ~(a | b) & <span class="num">0xFF</span>;  <span class="kw">break</span>;
+    }
+
+    out.flags.Z = (out.result == <span class="num">0</span>);
+    out.flags.N = (out.result >> <span class="num">7</span>) & <span class="num">1</span>;
+    <span class="kw">return</span> out;
+}
+
+<span class="cmt">/* ── Demo ─────────────────────────────────────────── */</span>
+<span class="type">int</span> <span class="fn">main</span>() {
+    <span class="type">AluResult</span> r;
+
+    r = <span class="fn">alu_execute</span>(<span class="num">53</span>, <span class="num">26</span>, OP_ADD);
+    <span class="fn">printf</span>(<span class="str">"ADD 53+26 = %d  Z=%d C=%d V=%d N=%d\\n"</span>,
+           r.result, r.flags.Z, r.flags.C,
+           r.flags.V, r.flags.N);
+
+    r = <span class="fn">alu_execute</span>(<span class="num">0xFF</span>, <span class="num">0</span>, OP_NOT);
+    <span class="fn">printf</span>(<span class="str">"NOT 0xFF  = 0x%02X\\n"</span>, r.result);
+
+    <span class="kw">return</span> <span class="num">0</span>;
+}`,
+
+js: `<span class="cmt">// ╔══════════════════════════════════════╗
+// ║  8-BIT ALU IMPLEMENTATION — JS/ES6  ║
+// ╚══════════════════════════════════════╝</span>
+
+<span class="kw">const</span> Op = Object.freeze({
+    ADD: <span class="str">'ADD'</span>, SUB:  <span class="str">'SUB'</span>,  MUL:  <span class="str">'MUL'</span>,
+    DIV: <span class="str">'DIV'</span>, AND:  <span class="str">'AND'</span>,  OR:   <span class="str">'OR'</span>,
+    XOR: <span class="str">'XOR'</span>, NOT:  <span class="str">'NOT'</span>,  SHL:  <span class="str">'SHL'</span>,
+    SHR: <span class="str">'SHR'</span>, NAND: <span class="str">'NAND'</span>, NOR:  <span class="str">'NOR'</span>,
+});
+
+<span class="cmt">/**
+ * Full adder — computes 1-bit sum and carry-out
+ * @param {0|1} a  @param {0|1} b  @param {0|1} cin
+ * @returns {{ sum: 0|1, cout: 0|1 }}
+ */</span>
+<span class="kw">function</span> <span class="fn">fullAdder</span>(a, b, cin) {
+    <span class="kw">const</span> sum  = a ^ b ^ cin;
+    <span class="kw">const</span> cout = (a & b) | (b & cin) | (a & cin);
+    <span class="kw">return</span> { sum, cout };
+}
+
+<span class="cmt">/**
+ * 8-bit ripple-carry adder using full adders
+ * @param {number} a  @param {number} b
+ * @returns {{ result: number, carry: 0|1 }}
+ */</span>
+<span class="kw">function</span> <span class="fn">rippleAdd</span>(a, b) {
+    <span class="kw">let</span> result = <span class="num">0</span>, cin = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < <span class="num">8</span>; i++) {
+        <span class="kw">const</span> { sum, cout } = <span class="fn">fullAdder</span>(
+            (a >> i) & <span class="num">1</span>, (b >> i) & <span class="num">1</span>, cin
+        );
+        result |= (sum << i);
+        cin = cout;
+    }
+    <span class="kw">return</span> { result: result & <span class="num">0xFF</span>, carry: cin };
+}
+
+<span class="cmt">/**
+ * ALU class — 8-bit arithmetic and logic unit
+ */</span>
+<span class="kw">class</span> <span class="type">ALU</span> {
+    <span class="fn">execute</span>(a, b, op) {
+        a &= <span class="num">0xFF</span>; b &= <span class="num">0xFF</span>;
+        <span class="kw">let</span> result = <span class="num">0</span>, carry = <span class="num">0</span>, overflow = <span class="num">false</span>;
+
+        <span class="kw">switch</span> (op) {
+            <span class="kw">case</span> Op.ADD: {
+                ({ result, carry } = <span class="fn">rippleAdd</span>(a, b));
+                overflow = this.<span class="fn">_overflowAdd</span>(a, b, result);
+                <span class="kw">break</span>;
+            }
+            <span class="kw">case</span> Op.SUB: {
+                <span class="kw">const</span> twos = (~b + <span class="num">1</span>) & <span class="num">0xFF</span>;
+                ({ result } = <span class="fn">rippleAdd</span>(a, twos));
+                carry = a < b ? <span class="num">1</span> : <span class="num">0</span>;
+                <span class="kw">break</span>;
+            }
+            <span class="kw">case</span> Op.MUL:  result = (a * b) & <span class="num">0xFF</span>;    <span class="kw">break</span>;
+            <span class="kw">case</span> Op.DIV:  result = b ? (a / b | <span class="num">0</span>) : <span class="num">0</span>; <span class="kw">break</span>;
+            <span class="kw">case</span> Op.AND:  result = a & b;              <span class="kw">break</span>;
+            <span class="kw">case</span> Op.OR:   result = a | b;              <span class="kw">break</span>;
+            <span class="kw">case</span> Op.XOR:  result = a ^ b;              <span class="kw">break</span>;
+            <span class="kw">case</span> Op.NOT:  result = (~a) & <span class="num">0xFF</span>;       <span class="kw">break</span>;
+            <span class="kw">case</span> Op.SHL:
+                carry  = (a >> <span class="num">7</span>) & <span class="num">1</span>;
+                result = (a << <span class="num">1</span>) & <span class="num">0xFF</span>;
+                <span class="kw">break</span>;
+            <span class="kw">case</span> Op.SHR:
+                carry  = a & <span class="num">1</span>;
+                result = (a >> <span class="num">1</span>) & <span class="num">0xFF</span>;
+                <span class="kw">break</span>;
+            <span class="kw">case</span> Op.NAND: result = ~(a & b) & <span class="num">0xFF</span>;   <span class="kw">break</span>;
+            <span class="kw">case</span> Op.NOR:  result = ~(a | b) & <span class="num">0xFF</span>;   <span class="kw">break</span>;
+        }
+
+        <span class="kw">return</span> {
+            result,
+            flags: {
+                Z: result === <span class="num">0</span>,
+                C: Boolean(carry),
+                V: overflow,
+                N: Boolean(result & <span class="num">0x80</span>),
+            }
+        };
+    }
+
+    <span class="fn">_overflowAdd</span>(a, b, r) {
+        <span class="kw">return</span> (
+            (!(a & <span class="num">0x80</span>) && !(b & <span class="num">0x80</span>) &&  (r & <span class="num">0x80</span>)) ||
+            ( (a & <span class="num">0x80</span>) &&  (b & <span class="num">0x80</span>) && !(r & <span class="num">0x80</span>))
+        );
+    }
+}
+
+<span class="cmt">// ── Usage ────────────────────────────────────────────────</span>
+<span class="kw">const</span> alu = <span class="kw">new</span> <span class="type">ALU</span>();
+
+<span class="kw">const</span> r1 = alu.<span class="fn">execute</span>(<span class="num">53</span>, <span class="num">26</span>, Op.ADD);
+console.<span class="fn">log</span>(<span class="str">\`ADD 53 + 26 = \${r1.result}\`</span>);    <span class="cmt">// 79</span>
+
+<span class="kw">const</span> r2 = alu.<span class="fn">execute</span>(<span class="num">0b10110011</span>, <span class="num">0b11001100</span>, Op.AND);
+console.<span class="fn">log</span>(<span class="str">\`AND = \${r2.result.toString(2).padStart(8,'0')}\`</span>);
+
+<span class="kw">const</span> r3 = alu.<span class="fn">execute</span>(<span class="num">200</span>, <span class="num">100</span>, Op.ADD);
+console.<span class="fn">log</span>(<span class="str">\`Overflow test: \${r3.flags.V ? 'OVERFLOW' : 'OK'}\`</span>);`,
+
+vhdl: `<span class="cmt">-- ╔══════════════════════════════════════╗
+-- ║  8-BIT ALU IMPLEMENTATION — VHDL    ║
+-- ╚══════════════════════════════════════╝</span>
+
+<span class="kw">library</span> IEEE;
+<span class="kw">use</span> IEEE.STD_LOGIC_1164.<span class="kw">ALL</span>;
+<span class="kw">use</span> IEEE.NUMERIC_STD.<span class="kw">ALL</span>;
+
+<span class="cmt">-- ── Entity Declaration ──────────────────────────────</span>
+<span class="kw">entity</span> <span class="type">ALU_8BIT</span> <span class="kw">is</span>
+    <span class="kw">port</span> (
+        A      : <span class="kw">in</span>  <span class="type">STD_LOGIC_VECTOR</span>(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>);
+        B      : <span class="kw">in</span>  <span class="type">STD_LOGIC_VECTOR</span>(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>);
+        OP     : <span class="kw">in</span>  <span class="type">STD_LOGIC_VECTOR</span>(<span class="num">3</span> <span class="kw">downto</span> <span class="num">0</span>);
+        CIN    : <span class="kw">in</span>  <span class="type">STD_LOGIC</span>;
+        RESULT : <span class="kw">out</span> <span class="type">STD_LOGIC_VECTOR</span>(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>);
+        ZFLAG  : <span class="kw">out</span> <span class="type">STD_LOGIC</span>;  <span class="cmt">-- Zero</span>
+        CFLAG  : <span class="kw">out</span> <span class="type">STD_LOGIC</span>;  <span class="cmt">-- Carry</span>
+        VFLAG  : <span class="kw">out</span> <span class="type">STD_LOGIC</span>;  <span class="cmt">-- Overflow</span>
+        NFLAG  : <span class="kw">out</span> <span class="type">STD_LOGIC</span>   <span class="cmt">-- Negative</span>
+    );
+<span class="kw">end</span> <span class="type">ALU_8BIT</span>;
+
+<span class="cmt">-- ── Architecture Body ───────────────────────────────</span>
+<span class="kw">architecture</span> <span class="type">Behavioral</span> <span class="kw">of</span> <span class="type">ALU_8BIT</span> <span class="kw">is</span>
+
+    <span class="kw">signal</span> A_uns  : <span class="type">UNSIGNED</span>(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>);
+    <span class="kw">signal</span> B_uns  : <span class="type">UNSIGNED</span>(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>);
+    <span class="kw">signal</span> R9     : <span class="type">UNSIGNED</span>(<span class="num">8</span> <span class="kw">downto</span> <span class="num">0</span>); <span class="cmt">-- 9-bit for carry</span>
+
+<span class="kw">begin</span>
+    A_uns <= <span class="fn">UNSIGNED</span>(A);
+    B_uns <= <span class="fn">UNSIGNED</span>(B);
+
+    <span class="fn">ALU_PROC</span> : <span class="kw">process</span>(A, B, OP, CIN, A_uns, B_uns)
+    <span class="kw">variable</span> tmp : <span class="type">UNSIGNED</span>(<span class="num">8</span> <span class="kw">downto</span> <span class="num">0</span>);
+    <span class="kw">begin</span>
+        tmp   := (<span class="kw">others</span> => <span class="str">'0'</span>);
+        CFLAG <= <span class="str">'0'</span>;
+        VFLAG <= <span class="str">'0'</span>;
+
+        <span class="kw">case</span> OP <span class="kw">is</span>
+            <span class="kw">when</span> <span class="str">"0000"</span> =>  <span class="cmt">-- ADD</span>
+                tmp   := (<span class="str">'0'</span> & A_uns) + (<span class="str">'0'</span> & B_uns);
+                CFLAG <= tmp(<span class="num">8</span>);
+                VFLAG <= (A(<span class="num">7</span>) <span class="kw">XNOR</span> B(<span class="num">7</span>)) <span class="kw">AND</span> (A(<span class="num">7</span>) <span class="kw">XOR</span> tmp(<span class="num">7</span>));
+                RESULT <= <span class="type">STD_LOGIC_VECTOR</span>(tmp(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>));
+
+            <span class="kw">when</span> <span class="str">"0001"</span> =>  <span class="cmt">-- SUB (2's complement)</span>
+                tmp   := (<span class="str">'0'</span> & A_uns) - (<span class="str">'0'</span> & B_uns);
+                CFLAG <= tmp(<span class="num">8</span>);
+                RESULT <= <span class="type">STD_LOGIC_VECTOR</span>(tmp(<span class="num">7</span> <span class="kw">downto</span> <span class="num">0</span>));
+
+            <span class="kw">when</span> <span class="str">"0100"</span> =>  <span class="cmt">-- AND</span>
+                RESULT <= A <span class="kw">AND</span> B;
+
+            <span class="kw">when</span> <span class="str">"0101"</span> =>  <span class="cmt">-- OR</span>
+                RESULT <= A <span class="kw">OR</span> B;
+
+            <span class="kw">when</span> <span class="str">"0110"</span> =>  <span class="cmt">-- XOR</span>
+                RESULT <= A <span class="kw">XOR</span> B;
+
+            <span class="kw">when</span> <span class="str">"0111"</span> =>  <span class="cmt">-- NOT</span>
+                RESULT <= <span class="kw">NOT</span> A;
+
+            <span class="kw">when</span> <span class="str">"1000"</span> =>  <span class="cmt">-- SHL (logical left shift)</span>
+                CFLAG  <= A(<span class="num">7</span>);
+                RESULT <= A(<span class="num">6</span> <span class="kw">downto</span> <span class="num">0</span>) & <span class="str">'0'</span>;
+
+            <span class="kw">when</span> <span class="str">"1001"</span> =>  <span class="cmt">-- SHR (logical right shift)</span>
+                CFLAG  <= A(<span class="num">0</span>);
+                RESULT <= <span class="str">'0'</span> & A(<span class="num">7</span> <span class="kw">downto</span> <span class="num">1</span>);
+
+            <span class="kw">when</span> <span class="str">"1010"</span> =>  <span class="cmt">-- NAND</span>
+                RESULT <= <span class="kw">NOT</span> (A <span class="kw">AND</span> B);
+
+            <span class="kw">when</span> <span class="str">"1011"</span> =>  <span class="cmt">-- NOR</span>
+                RESULT <= <span class="kw">NOT</span> (A <span class="kw">OR</span> B);
+
+            <span class="kw">when others</span> =>
+                RESULT <= (<span class="kw">others</span> => <span class="str">'0'</span>);
+        <span class="kw">end case</span>;
+    <span class="kw">end process</span> <span class="fn">ALU_PROC</span>;
+
+    <span class="cmt">-- Flag logic (combinational)</span>
+    ZFLAG <= <span class="str">'1'</span> <span class="kw">when</span> (RESULT = <span class="str">"00000000"</span>) <span class="kw">else</span> <span class="str">'0'</span>;
+    NFLAG <= RESULT(<span class="num">7</span>);
+
+<span class="kw">end</span> <span class="type">Behavioral</span>;`,
+
+verilog: `<span class="cmt">// ╔══════════════════════════════════════╗
+// ║  8-BIT ALU IMPLEMENTATION — Verilog ║
+// ╚══════════════════════════════════════╝</span>
+
+<span class="kw">module</span> <span class="type">alu_8bit</span> (
+    <span class="kw">input</span>  wire [<span class="num">7</span>:<span class="num">0</span>] a,      <span class="cmt">// Operand A</span>
+    <span class="kw">input</span>  wire [<span class="num">7</span>:<span class="num">0</span>] b,      <span class="cmt">// Operand B</span>
+    <span class="kw">input</span>  wire [<span class="num">3</span>:<span class="num">0</span>] op,     <span class="cmt">// Operation select</span>
+    <span class="kw">input</span>  wire       cin,    <span class="cmt">// Carry in</span>
+    <span class="kw">output</span> reg  [<span class="num">7</span>:<span class="num">0</span>] result, <span class="cmt">// Result</span>
+    <span class="kw">output</span> reg        z_flag, <span class="cmt">// Zero</span>
+    <span class="kw">output</span> reg        c_flag, <span class="cmt">// Carry</span>
+    <span class="kw">output</span> reg        v_flag, <span class="cmt">// Overflow</span>
+    <span class="kw">output</span> reg        n_flag  <span class="cmt">// Negative</span>
+);
+
+<span class="cmt">// ── Operation Opcodes ─────────────────────────────────</span>
+<span class="kw">parameter</span> ADD  = <span class="num">4'h0</span>,
+           SUB  = <span class="num">4'h1</span>,
+           MUL  = <span class="num">4'h2</span>,
+           DIV  = <span class="num">4'h3</span>,
+           AND_ = <span class="num">4'h4</span>,
+           OR_  = <span class="num">4'h5</span>,
+           XOR_ = <span class="num">4'h6</span>,
+           NOT_ = <span class="num">4'h7</span>,
+           SHL  = <span class="num">4'h8</span>,
+           SHR  = <span class="num">4'h9</span>,
+           NAND = <span class="num">4'hA</span>,
+           NOR_ = <span class="num">4'hB</span>;
+
+<span class="cmt">// ── Extended wire for carry detection ────────────────</span>
+wire [<span class="num">8</span>:<span class="num">0</span>] add_result = {<span class="num">1'b0</span>, a} + {<span class="num">1'b0</span>, b};
+wire [<span class="num">8</span>:<span class="num">0</span>] sub_result = {<span class="num">1'b0</span>, a} - {<span class="num">1'b0</span>, b};
+
+<span class="cmt">// ── ALU Combinational Logic ───────────────────────────</span>
+<span class="kw">always</span> @(*) <span class="kw">begin</span>
+    result = <span class="num">8'h00</span>;
+    c_flag = <span class="num">1'b0</span>;
+    v_flag = <span class="num">1'b0</span>;
+
+    <span class="kw">case</span> (op)
+        ADD: <span class="kw">begin</span>
+            result = add_result[<span class="num">7</span>:<span class="num">0</span>];
+            c_flag = add_result[<span class="num">8</span>];
+            <span class="cmt">// Overflow: same sign inputs, different sign output</span>
+            v_flag = (~a[<span class="num">7</span>] & ~b[<span class="num">7</span>] & result[<span class="num">7</span>]) |
+                     ( a[<span class="num">7</span>] &  b[<span class="num">7</span>] & ~result[<span class="num">7</span>]);
+        <span class="kw">end</span>
+
+        SUB: <span class="kw">begin</span>
+            result = sub_result[<span class="num">7</span>:<span class="num">0</span>];
+            c_flag = sub_result[<span class="num">8</span>]; <span class="cmt">// borrow flag</span>
+        <span class="kw">end</span>
+
+        AND_:  result = a & b;
+        OR_:   result = a | b;
+        XOR_:  result = a ^ b;
+        NOT_:  result = ~a;
+
+        SHL: <span class="kw">begin</span>
+            result = a << <span class="num">1</span>;
+            c_flag = a[<span class="num">7</span>];
+        <span class="kw">end</span>
+
+        SHR: <span class="kw">begin</span>
+            result = a >> <span class="num">1</span>;
+            c_flag = a[<span class="num">0</span>];
+        <span class="kw">end</span>
+
+        NAND:  result = ~(a & b);
+        NOR_:  result = ~(a | b);
+
+        <span class="kw">default</span>: result = <span class="num">8'h00</span>;
+    <span class="kw">endcase</span>
+
+    <span class="cmt">// Update status flags</span>
+    z_flag = (result == <span class="num">8'h00</span>);
+    n_flag = result[<span class="num">7</span>];
+<span class="kw">end</span>
+
+<span class="kw">endmodule</span>
+
+<span class="cmt">// ── Full Adder Module ─────────────────────────────────</span>
+<span class="kw">module</span> <span class="type">full_adder</span> (
+    <span class="kw">input</span>  a, b, cin,
+    <span class="kw">output</span> sum, cout
+);
+    <span class="kw">assign</span> sum  = a ^ b ^ cin;
+    <span class="kw">assign</span> cout = (a & b) | (b & cin) | (a & cin);
+<span class="kw">endmodule</span>
+
+<span class="cmt">// ── Testbench ─────────────────────────────────────────</span>
+<span class="kw">module</span> <span class="type">alu_tb</span>;
+    <span class="kw">reg</span> [<span class="num">7</span>:<span class="num">0</span>] a, b;
+    <span class="kw">reg</span> [<span class="num">3</span>:<span class="num">0</span>] op;
+    <span class="kw">reg</span>        cin;
+    <span class="kw">wire</span> [<span class="num">7</span>:<span class="num">0</span>] result;
+    <span class="kw">wire</span>        z, c, v, n;
+
+    <span class="type">alu_8bit</span> uut(.a(a),.b(b),.op(op),.cin(cin),
+                 .result(result),.z_flag(z),
+                 .c_flag(c),.v_flag(v),.n_flag(n));
+
+    <span class="kw">initial begin</span>
+        $<span class="fn">monitor</span>(<span class="str">"%t: %d op %d = %d  Z=%b C=%b V=%b N=%b"</span>,
+                 $<span class="fn">time</span>,a,b,result,z,c,v,n);
+
+        a=<span class="num">53</span>; b=<span class="num">26</span>; op=<span class="num">4'h0</span>; cin=<span class="num">0</span>; #<span class="num">10</span>; <span class="cmt">// ADD</span>
+        a=<span class="num">100</span>;b=<span class="num">37</span>; op=<span class="num">4'h1</span>; cin=<span class="num">0</span>; #<span class="num">10</span>; <span class="cmt">// SUB</span>
+        a=<span class="num">8'hFF</span>; b=<span class="num">0</span>; op=<span class="num">4'h7</span>; cin=<span class="num">0</span>; #<span class="num">10</span>; <span class="cmt">// NOT</span>
+        $<span class="fn">finish</span>;
+    <span class="kw">end</span>
+<span class="kw">endmodule</span>`
+};
+
+function showCode(lang) {
+  document.querySelectorAll('.code-tab').forEach(t=>t.classList.remove('active'));
+  const langs = ['python','c','js','vhdl','verilog'];
+  const idx = langs.indexOf(lang);
+  document.querySelectorAll('.code-tab')[idx].classList.add('active');
+  document.getElementById('code-display').innerHTML = CODES[lang] || '';
+}
+
+// ── OVERVIEW TABLE ────────────────────────────────────────
+
+function buildOpTable() {
+  const tbody = document.getElementById('op-table-body');
+  if(!tbody) return;
+  tbody.innerHTML = OPCODES.map(o=>`
+    <tr>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--purple);font-family:var(--display);font-size:10px">${o.op}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--amber)">${o.name}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted)">${o.expr}</td>
+    </tr>`).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────
+
+buildBitButtons();
+updateDisplays();
+buildOpButtons();
+buildOpTable();
+drawALU();
+
+</script>
+</body>
+</html>
